@@ -1,11 +1,11 @@
 # COMMANDS
 
-function tmux_attach_or_new() {
-    tmux -2 new-session -A -s 0
-}
-
 function version_at_least() {
     [[ "$(printf '%s\n' "$@" | sort -V | head -n 1)" == "$1" ]]
+}
+
+function tmux_attach_or_new() {
+    tmux -2 new-session -A -s 0
 }
 
 alias t="tmux_attach_or_new"
@@ -47,6 +47,50 @@ alias df='df -x squashfs'
 alias lsblk='lsblk -e1,7'
 alias cb='xclip -selection clipboard'
 
-function has_host() {
+function is_host_pingable() {
     timeout "${2:-0.2}" ping -q -n -c 1 "$1" 2> /dev/null > /dev/null
+}
+
+function link_to_file() {
+    local f
+    local OPTIND=
+    local had_error=false
+    local verbose=false
+    local actually_do=true
+    local dry_run=false
+    while getopts "vn" opt; do
+        case "$opt" in
+            v)
+                verbose=true
+                ;;
+            n)
+                actually_do=false
+                dry_run=true
+                ;;
+            \?)
+                echo "Invalid option: -$opt"
+                return 1
+                ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+    for f in "$@"; do
+        if [ -L "$f" ]; then
+            local target=$(realpath "$f")
+            if $verbose || $dry_run; then
+                echo "Copying $target to $f"
+            fi
+            if $actually_do; then
+                cp --remove-destination "$target" "$f"
+            fi
+        else
+            echo "Error: $f is not a symlink."
+            had_error=true
+            continue
+        fi
+    done
+    if $had_error; then
+        echo "Error occurred."
+        return 1
+    fi
 }

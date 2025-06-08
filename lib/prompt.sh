@@ -70,7 +70,7 @@ function ps1_user() {
     if [[ "$SSH_CLIENT" ]]; then
         HOSTNAME_PS="@$(hostname)"
     fi
-    if [[ "$(basename "$HOME")" != $(whoami) ]]; then
+    if [[ "$(basename "$HOME")" != $(whoami) ]] || [[ -n "$HOSTNAME_PS" ]]; then
         USER_PS="$(whoami)"
     fi
     if [[ "$USER_PS$HOSTNAME_PS" ]]; then

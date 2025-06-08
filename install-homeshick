@@ -43,4 +43,6 @@ else
     homeshick link
 fi
 
+# Testing command to use within a docker container with appropriate bind mounts.
+#
 # mkdir -p $HOME/.homesick/repos; cp -a /tmp/home-config $HOME/.homesick/repos; bash /tmp/home-config/install-homeshick

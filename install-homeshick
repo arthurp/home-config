@@ -1,0 +1,46 @@
+#! /bin/bash
+set -eu
+
+if command -v git > /dev/null; then true
+else
+    echo "You do not have git installed. It is required."
+    if [ "$(whoami)" = "root" ]; then
+        SUDO=""
+    else
+        SUDO="sudo "
+    fi
+    if command -v apt > /dev/null; then
+        CMD="${SUDO}apt update; ${SUDO}apt install --no-install-recommends git ca-certificates"
+    else
+        echo "I don't know your package manager. Install git yourself."
+        exit 1
+    fi
+    echo "The following command will be run:"
+    echo
+    echo "$CMD"
+    echo
+    read -p "Do you want to run this command? (yes/no): " choice
+    if [ "$choice" = "yes" ]; then
+        eval "$CMD"
+    else
+        echo "Aborting installation."
+        exit 1
+    fi
+fi
+
+### Install homeshick ###
+if [ ! -f "$HOME/.homesick/repos/homeshick/homeshick.sh" ]; then
+    git clone https://github.com/andsens/homeshick.git $HOME/.homesick/repos/homeshick
+fi
+
+source $HOME/.homesick/repos/homeshick/homeshick.sh
+
+### Install my config ###
+if [ ! -d "$HOME/.homesick/repos/home-config" ]; then
+    homeshick clone https://github.com/arthurp/home-config.git
+else
+    homeshick pull home-config || true
+    homeshick link
+fi
+
+# mkdir -p $HOME/.homesick/repos; cp -a /tmp/home-config $HOME/.homesick/repos; bash /tmp/home-config/install-homeshick

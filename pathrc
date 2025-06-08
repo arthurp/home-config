@@ -75,9 +75,8 @@ done
 # $PATH_ADD already has a trailing ':'
 export PATH=${PATH_ADD}${PATH}
 
-
 # Comes after setting path so we can pick up contract from paths we are adding
-if command -v contract > /dev/null 2> /dev/null; then
+if command -v contract > /dev/null 2> /dev/null && contract < /dev/null > /dev/null 2> /dev/null; then
     contract_cmd="contract -q -U PATH -U PWD"
 else
     contract_cmd="cat"

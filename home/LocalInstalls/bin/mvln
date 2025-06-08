@@ -1,0 +1,90 @@
+#!/bin/bash
+function usage() {
+    echo "mvln -t TARGET [-vnbfA] FILES [...]"
+}
+
+function common_prefix() {
+    printf "%s\n%s\n" "$1" "$2" | sed -e 'N;s@^\(.*/\).*\n\1.*$@\1@'
+}
+
+RELATIVE=true
+BASENAME_ONLY=false
+FLAGS=""
+DRYRUN=""
+TARGET=""
+while getopts "Ahvnbft:" OPT; do
+    case $OPT in
+        (A)
+            RELATIVE=false
+            ;;
+        (b)
+            BASENAME_ONLY=true
+            ;;
+        (v)
+            FLAGS="$FLAGS --verbose"
+            ;;
+        (f)
+            FLAGS="$FLAGS --force"
+            ;;
+        (n)
+            DRYRUN="echo"
+            ;;
+        (t)
+            TARGET="$OPTARG"
+            ;;
+        (*)
+            usage
+            exit -1
+            ;;
+    esac
+done
+
+if [[ -z "$TARGET" ]]; then
+    echo "Target (-t) must be provided."
+    usage
+    exit -1
+fi
+
+
+shift $((OPTIND - 1))
+
+while [[ $# -gt 0 ]]; do
+  ORIGINAL="${1%%/}"
+
+  if [[ -L "$ORIGINAL" ]]; then
+      echo "$ORIGINAL is already a symbolic link. (Did you mean to move its target: $(readlink -- "$ORIGINAL"))"
+      shift
+      continue 1
+  fi
+
+  if $BASENAME_ONLY; then
+      SUBTARGET="$(basename -- "$ORIGINAL")"
+  else
+      PREFIX="$(common_prefix "$(realpath --logical --no-symlink -- "$TARGET")" "$(realpath --logical --no-symlink -- "$ORIGINAL")")"
+      O="$(realpath --no-symlink -- "$ORIGINAL")"
+      SUBTARGET="${O##$PREFIX}"
+  fi
+  THISTARGET="$TARGET/$SUBTARGET"
+
+  if [[ -e "$THISTARGET" && "$FLAGS" != *--force* ]]; then
+      echo "$THISTARGET exists."
+      shift
+      continue 1
+  fi
+
+  TARGETSUPER="$(dirname "$THISTARGET")"
+  $DRYRUN mkdir --parents -- "$TARGETSUPER"
+  # $DRYRUN chmod --reference="$ORIGINAL" -- "$THISTARGET"
+  $DRYRUN rsync -aAXP $FLAGS -- "$ORIGINAL" "$TARGETSUPER" || exit $?
+  if [[ "$FLAGS" == *--force* ]]; then
+      $DRYRUN chmod u+w --recursive -- "$ORIGINAL" || exit $?
+  fi
+  $DRYRUN rm --recursive $FLAGS -- "$ORIGINAL" || exit $?
+  if $RELATIVE; then
+      LINKTARGET="$(realpath --logical --no-symlink --canonicalize-missing --relative-to="$(dirname "$ORIGINAL")" -- "$THISTARGET")"
+  else
+      LINKTARGET="$(realpath --logical --no-symlink --canonicalize-missing -- "$THISTARGET")"
+  fi
+  $DRYRUN ln $FLAGS --symbolic --no-target-directory --force -- "$LINKTARGET" "$ORIGINAL" || exit $?
+  shift
+done

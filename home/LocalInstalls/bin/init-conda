@@ -1,0 +1,30 @@
+#! /bin/bash
+
+locations_searched="$HOME/LocalInstalls/*conda* $HOME/LocalInstalls/conda/*conda* $HOME/*conda*"
+
+for potential_location in $locations_searched; do
+    if [ -f "$potential_location/etc/profile.d/conda.sh" ]; then
+        echo "Found conda at $potential_location"
+        found_conda_location="$potential_location"
+        source "$potential_location/etc/profile.d/conda.sh"
+        potential_mamba="$(dirname "$CONDA_EXE")/mamba"
+        if [ -x "$potential_mamba" ]; then
+            alias mamba="$potential_mamba"
+        fi
+        break
+    fi
+done
+
+if [ -z "$found_conda_location" ]; then
+    echo "ERROR: Conda not found. Searched:" $locations_searched
+else
+    if (return 0 2>/dev/null); then
+        true
+    else
+        echo "Your shell has not been configured to use this conda."
+        echo "To configure your shell, init-conda should be sourced:"
+        echo ". init-conda"
+    fi
+fi
+
+unset locations_searched potential_location found_conda_location

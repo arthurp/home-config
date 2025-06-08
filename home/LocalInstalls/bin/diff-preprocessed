@@ -1,0 +1,7 @@
+#! /bin/bash
+PP=$1
+A=$2
+B=$3
+shift 3
+
+diff "$@" <($PP $A) <($PP $B) 

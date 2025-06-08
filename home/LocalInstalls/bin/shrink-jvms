@@ -1,0 +1,63 @@
+#! /bin/bash
+
+function jvms() {
+    jcmd | grep -v "sun\.tools\.jcmd\.JCmd" | cut -f 1 -d ' '
+}
+
+function heap_info() {
+    eval $(jcmd $1 VM.flags | \
+               sed -n 's/^.*MaxHeapSize=\([0-9]\+\).*$/MAX_HEAP_SIZE=\1/p')
+    if [ -n "$MAX_HEAP_SIZE" ]; then
+        echo MAX_JVM_MEM=$[$MAX_HEAP_SIZE / 1024]
+    else
+        echo MAX_JVM_MEM=0
+    fi
+    
+    (jcmd $1 GC.heap_info | \
+        sed -n 's/^.*total \([0-9]\+\)K, used \([0-9]\+\)K.*$/TOTAL_JVM_MEM=\1\nUSED_JVM_MEM=\2/p') || \
+        (echo "TOTAL_JVM_MEM=0"; echo "USED_JVM_MEM=0")
+}
+
+function sys_mem_info() {
+    free -k | sed -n 's/^Mem: \+\([0-9]\+\) \+\([0-9]\+\) \+\([0-9]\+\) \+.*$/TOTAL_SYS_MEM=\1\nUSED_SYS_MEM=\2/p'
+}
+
+function gc() {
+    unbuffer jcmd $1 GC.run | unbuffer -p paste -s
+    echo
+}
+
+function force_gc() {
+    for pid in $(jvms); do
+        eval $(heap_info $pid)
+        eval $(sys_mem_info)
+        
+        FREE_SYS_MEM=$[$TOTAL_SYS_MEM - $USED_SYS_MEM]
+        QUARTER_SYS_MEM=$[$TOTAL_SYS_MEM / 4]
+        
+        FREE_JVM_MEM=$[$TOTAL_JVM_MEM - $USED_JVM_MEM]
+        QUARTER_JVM_MEM=$[$TOTAL_JVM_MEM / 4]
+
+        QUARTER_MAX_JVM_MEM=$[$MAX_JVM_MEM / 4]
+
+        # [ $FREE_JVM_MEM -ge $QUARTER_JVM_MEM ] ||
+        if [ $TOTAL_JVM_MEM -ge $QUARTER_MAX_JVM_MEM ] || [ $FREE_SYS_MEM -le $QUARTER_SYS_MEM ]; then
+            gc $pid
+        fi
+    done
+}
+
+while getopts "d" opt; do
+    case "$opt" in
+        d)
+            while true; do
+                force_gc
+                sleep 30
+            done
+            exit 0
+            ;;
+    esac
+done
+
+
+force_gc

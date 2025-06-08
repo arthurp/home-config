@@ -1,0 +1,67 @@
+[alias]
+st = status
+sw = switch
+re = restore
+glog = log --graph
+# out = log HEAD@{origin}..HEAD
+# in = !git fetch && git log ..@{origin}
+wdiff = diff --word-diff
+unstage = reset --
+diff-without = "!f() { IGNORE=\"$0\"; shift; diff <(git diff -G \"$IGNORE\" \"$@\") <(git diff \"$@\") | sed -n 's/^> //p'; }; f"
+push-force = push --force-with-lease
+br = branch -v
+ctx = "!f() { R=${1:-HEAD}; git fetch --no-auto-gc origin; if git rev-parse $R@{push} -- > /dev/null 2> /dev/null; then git glog $R $R@{push} $R@{origin} origin/master --; else if git rev-parse $R@{origin} -- > /dev/null 2> /dev/null; then git glog $R $R@{origin} origin/master --; else git glog $R origin/master --; fi; fi }; f"
+# set-u = branch --set-upstream-to origin/master
+# fp = merge-base --fork-point origin/master
+
+[core]
+	autocrlf = input
+
+[user]
+	name = Arthur Peters
+	email = amp@singingwizard.org
+
+[push]
+	recurseSubmodules = check
+	default = current
+
+[remote]
+	pushdefault = origin
+
+[branch]
+	autosetuprebase = always
+	sort = authordate
+
+[pull]
+	rebase = true
+
+[merge]
+	conflictstyle = diff3
+
+[commit]
+	gpgsign = false
+
+[color]
+	ui = auto
+
+[rebase]
+	autoStash = true
+	autoSquash = true
+
+[diff]
+	submodule = log
+
+[status]
+	submodulesummary = 1
+
+[submodule]
+	recurse = true
+
+[fetch]
+	recurseSubmodules = on-demand
+
+[protocol]
+	version = 2
+
+[format]
+pretty = short

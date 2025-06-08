@@ -1,0 +1,12 @@
+syntax: glob
+*-2x1.pdf
+*~
+*.o
+\#*\#
+.\#*
+
+*.aux
+*.log
+*.out
+
+*.hi

@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+from typing import Any
+
+import sys
+import argparse
+import subprocess
+import os
+
+
+def filter(stream, variables, print_replacements):
+    replacements = [(v, k) for k, v in variables.items() if len(v) > len(k)+1]
+    replacements.sort(key=lambda p: (-len(p[0]), len(p[1])))
+    found = set()
+
+    for line in stream:
+        for orig, repl in replacements:
+            if orig in line:
+                found.add(repl)
+            line = line.replace(orig, f"${{{repl}}}")
+        print(line, end="")
+
+    if print_replacements:
+        if found:
+            print("-"*80)
+            print("Performed replacements:")
+        for var in found:
+            print(f"{var}={variables.get(var)}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Simplify a text stream by replacing values with variable names from "
+                                                 "the environ.")
+    parser.add_argument("command", type=str, nargs="*", help="Command line")
+    parser.add_argument("-q", help="Quiet. Do not print replacements performed.", action="store_true")
+    parser.add_argument("-D", metavar="X=v", type=str, help="Define a variable", action="append")
+    parser.add_argument("-U", metavar="X", type=str, help="Undefine a variable (inferred or otherwise). Overrides -D, even if -U comes first.", action="append")
+    args = parser.parse_args()
+
+    variables: dict = os.environ.copy()
+    variables.pop("_", None)
+    variables.pop("OLDPWD", None)
+    if args.D:
+        variables.update(s.split("=", maxsplit=1) for s in args.D)
+    if args.U:
+        for k in args.U:
+            variables.pop(k, None)
+
+    if args.command:
+        cmd = subprocess.Popen(args.command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        filter(cmd.stdout, variables, not args.q)
+        cmd.wait()
+    else:
+        filter(sys.stdin, variables, not args.q)
+
+
+if __name__ == '__main__':
+    main()

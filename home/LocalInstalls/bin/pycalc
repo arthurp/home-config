@@ -1,0 +1,9 @@
+#! /bin/bash
+READLINK=readlink
+if command -v greadlink > /dev/null; then
+    READLINK=greadlink
+fi
+
+ENV_FILE="$(dirname "$($READLINK -f "$0")")/../../../pycalcenv.py"
+
+(exec python3 -i "$ENV_FILE") || (exec python -i "$ENV_FILE")

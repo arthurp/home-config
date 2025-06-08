@@ -1,0 +1,3 @@
+#! /bin/bash
+
+sort --parallel=4 $1 | uniq -c | sort --parallel=4 -n | tee >(wc --lines | tr -d "\n"; echo " total")

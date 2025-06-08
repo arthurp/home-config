@@ -1,0 +1,11 @@
+#! /bin/bash
+
+if command -v afuse > /dev/null; then
+    MNT=$(realpath ~/mnt)
+    mkdir -p "$MNT" 2> /dev/null
+    if mountpoint -q -- "$MNT"; then
+        true
+    else
+        afuse -o mount_template="sshfs -o follow_symlinks -o cache_timeout=40 -o idmap=user -C %r: %m" -o unmount_template="fusermount -u -z %m" -o timeout="600" "$MNT"
+    fi
+fi

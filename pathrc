@@ -1,0 +1,97 @@
+#! /bin/bash
+
+checkForExec()
+{
+    for file in "$@"; do
+        if [ -f "$file" -a -x "$file" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+checkForSO()
+{
+    file=$1
+
+    if [ -n "$file" -a -d "$file" -a -n "$(find "$file" -maxdepth 1 -name "*.so*")" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+checkForInclude()
+{
+    file=$1
+
+    if [ -n "$file" -a -d "$file" -a -n "$(cd "$file"; find . -maxdepth 3 '!' -path "*src*" '(' -name "*.h" -o -name "*.H" -o -name "*.hpp" ')')" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
+PATH_ADD=
+LD_ADD=
+INCL_ADD=
+
+lib_arch=32
+if (uname -i 2> /dev/null || uname -m) | grep -q "64"; then
+    lib_arch=64
+fi
+
+for dir in ~/bin ~/LocalInstalls/* ~/.cargo ~/.cabal ~/.local; do
+    if (echo "$dir" | egrep -iv "disable|dont|old" >/dev/null) && [ -d "$dir" ]; then
+	    if (echo "$PATH" | egrep -v "(:|^)$dir(:|$)" > /dev/null); then
+            # Check for executables
+	        if [ -d "$dir"/bin ] && checkForExec "$dir"/bin/*; then
+		        PATH_ADD="$dir"/bin:$PATH_ADD
+	        elif checkForExec "$dir"/*; then
+		        PATH_ADD="$dir":$PATH_ADD
+	        fi
+	    fi
+	    if (echo "$C_INCLUDE_PATH" | egrep -v "(:|^)$dir(:|$)" > /dev/null) && [ '!' -e "$dir"/NOINCLUDE ]; then
+            # Check for executables
+	        if [ -d "$dir"/include ] && checkForInclude "$dir"/include; then
+		        INCL_ADD="$dir"/include:$INCL_ADD
+	        elif checkForInclude "$dir"; then
+		        INCL_ADD="$dir":$INCL_ADD
+	        fi
+	    fi
+	    if (echo "$LD_LIBRARY_PATH" | egrep -v "(:|^)$dir(:|$)" > /dev/null) && [ '!' -e "$dir"/NOLIB ]; then
+            # Check for libraries
+	        if [ -d "$dir"/lib ] && checkForSO "$dir"/lib; then
+		        LD_ADD="$dir"/lib:$LD_ADD
+	        fi
+	        if [ -d "$dir"/lib$lib_arch ] && checkForSO "$dir"/lib$lib_arch; then
+		        LD_ADD="$dir"/lib$lib_arch:$LD_ADD
+	        fi
+	    fi
+    fi
+done
+
+# $PATH_ADD already has a trailing ':'
+export PATH=${PATH_ADD}${PATH}
+
+
+# Comes after setting path so we can pick up contract from paths we are adding
+if command -v contract > /dev/null 2> /dev/null; then
+    contract_cmd="contract -q -U PATH -U PWD"
+else
+    contract_cmd="cat"
+fi
+
+if [ "$PATH_ADD" ]; then
+    echo "Adding directories to paths:" $(echo $PATH_ADD | sed 's/:/ /g' | $contract_cmd)
+fi
+
+# export LD_LIBRARY_PATH=${LD_ADD}${LD_LIBRARY_PATH}
+# export LIBRARY_PATH=${LD_ADD}${LIBRARY_PATH}
+
+# export C_INCLUDE_PATH=${INCL_ADD}${C_INCLUDE_PATH}
+# export CPLUS_INCLUDE_PATH=${INCL_ADD}${CPLUS_INCLUDE_PATH}
+# export OBJC_INCLUDE_PATH=${INCL_ADD}${OBJC_INCLUDE_PATH}
+
+unset lib_arch contract_cmd

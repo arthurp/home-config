@@ -1,0 +1,7 @@
+*~
+*.tmp
+*_tmp.*
+*.jfr
+old-patches
+old_patches
+tmp*
